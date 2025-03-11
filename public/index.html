@@ -1,0 +1,40 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>NFT Buyback</title>
+  <link rel="stylesheet" href="style.css">
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.0.0/dist/umd/supabase.min.js"></script>
+</head>
+<body>
+  <div id="login-form">
+    <h2>Login</h2>
+    <input type="email" id="email" placeholder="Email" autocomplete="email"><br>
+    <input type="password" id="password" placeholder="Password" autocomplete="current-password"><br>
+    <button id="login-btn">Login</button>
+    <p>Belum punya akun? <a href="#" id="show-register-link">Create Account</a></p>
+  </div>
+  <div id="register-form" style="display: none;">
+    <h2>Create Account</h2>
+    <input type="email" id="reg-email" placeholder="Email" autocomplete="email"><br>
+    <input type="password" id="reg-password" placeholder="Password" autocomplete="new-password"><br>
+    <button id="register-btn">Register</button>
+    <p>Sudah punya akun? <a href="#" id="show-login-link">Login</a></p>
+  </div>
+  <div id="dashboard" style="display: none;">
+    <h1>Buyback Dashboard</h1>
+    <nav>
+      <button id="logout-btn">Logout</button>
+    </nav>
+    <h2>Your NFTs (Vendor)</h2>
+    <div id="vendor-nfts"></div>
+    <h2>Request Buyback (Buyer)</h2>
+    <input id="nft-id" placeholder="NFT ID"><br>
+    <button id="request-buyback-btn">Request Buyback</button>
+    <div id="request-message"></div>
+    <h2>Pending Requests</h2>
+    <div id="pending-requests"></div>
+  </div>
+  <script src="/script.js"></script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #e0f7e9;
+    padding: 20px;
+  }
+  h1, h2 {
+    color: #2e7d32;
+  }
+  div {
+    margin: 10px 0;
+  }
+  button {
+    background: #4caf50;
+    color: white;
+    border: none;
+    padding: 5px 10px;
+    cursor: pointer;
+  }
+  button:hover {
+    background: #388e3c;
+  }
+  /* Tambah ke style.css */
+#stats p {
+  margin: 5px 0;
+  padding: 5px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 3px;
+}
