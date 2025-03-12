@@ -237,4 +237,12 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('register-form').style.display = 'none';
     document.getElementById('login-form').style.display = 'block';
   });
+  // Logika untuk tombol Back (dipisahkan)
+  const backButton = document.getElementById('back-to-mastermind');
+  if (backButton) {
+    backButton.addEventListener('click', () => {
+      window.location.href = 'https://nft-main-bice.vercel.app';
+    });
+  }
+
 });
