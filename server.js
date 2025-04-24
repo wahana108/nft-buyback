@@ -4,20 +4,56 @@ const path = require('path');
 const app = express();
 const port = process.env.PORT || 3002;
 
-const supabaseUrl = 'https://jmqwuaybvruzxddsppdh.supabase.co';
-const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptcXd1YXlidnJ1enhkZHNwcGRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA0MTUxNzEsImV4cCI6MjA1NTk5MTE3MX0.ldNdOrsb4BWyFRwZUqIFEbmU0SgzJxiF_Z7eGZPKZJg';
-const supabase = createClient(supabaseUrl, supabaseKey);
+const supabaseUrl = 'https://oqquvpjikdbjlagdlbhp.supabase.co';
+const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xcXV2cGppa2RiamxhZ2RsYmhwIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc0NDk1MTgwOCwiZXhwIjoyMDYwNTI3ODA4fQ.cJri-wLQcDod3J49fUKesAY2cnghU3jtlD4BiuYMelw'; // Ganti dengan service_role key dari Supabase Dashboard
+const supabase = createClient(supabaseUrl, supabaseKey, {
+  auth: { autoRefreshToken: false, persistSession: false }
+});
 
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 const authenticate = async (req, res, next) => {
   const token = req.headers.authorization;
+  console.log('Auth token:', token);
   const { data: { user }, error } = await supabase.auth.getUser(token);
-  if (error || !user) return res.status(401).send('Unauthorized');
+  if (error || !user) {
+    console.error('Auth error:', error?.message);
+    return res.status(401).send('Unauthorized');
+  }
+  console.log('Authenticated user:', user.id, user.email);
   req.user = user;
   next();
 };
+
+app.post('/register', async (req, res) => {
+  try {
+    const { email, password } = req.body;
+    console.log('Registering user:', email);
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password
+    });
+    if (error) {
+      console.error('Auth signup error:', error.message);
+      throw error;
+    }
+    const user = data.user;
+    console.log('User registered in auth:', user.id, user.email);
+    const { error: userSyncError } = await supabase
+      .from('users')
+      .insert({ id: user.id, email: user.email, created_at: new Date().toISOString() });
+    if (userSyncError) {
+      console.error('Insert users error:', userSyncError.message);
+      throw userSyncError;
+    }
+    console.log('User added to users:', user.id);
+    res.json({ message: 'Registration successful', user });
+  } catch (error) {
+    console.error('Registration failed:', error.message);
+    res.status(500).send(error.message);
+  }
+});
 
 app.get('/vendor-nfts', authenticate, async (req, res) => {
   try {
@@ -60,9 +96,6 @@ app.post('/request-buyback', authenticate, async (req, res) => {
       return res.status(400).send('You already requested buyback for this NFT');
     }
 
-    const buyerEmail = req.user.email;
-    console.log('Buyer email:', buyerEmail);
-
     const { error } = await supabase
       .from('buyback2')
       .insert({
@@ -100,7 +133,7 @@ app.get('/pending-requests', authenticate, async (req, res) => {
     const pendingRequests = await Promise.all([
       ...vendorData.map(async req => {
         const { data: buyer, error } = await supabase
-          .from('auth.users')
+          .from('users')
           .select('email')
           .eq('id', req.buyer_id)
           .single();
@@ -165,11 +198,7 @@ app.post('/complete-buyback', authenticate, async (req, res) => {
       .select('buyer_id, vendor_id, status')
       .eq('id', request_id)
       .single();
-    console.log('Request data:', reqData, 'Error:', reqError);
-    if (reqError) {
-      console.error('Fetch buyback2 error:', reqError.message);
-      throw new Error(`Fetch buyback2 failed: ${reqError.message}`);
-    }
+    if (reqError) throw reqError;
     if (!reqData) return res.status(404).send('Request not found');
     if (reqData.buyer_id !== req.user.id) return res.status(403).send('Unauthorized');
     if (reqData.status !== 'confirmed') return res.status(400).send('Request not confirmed by vendor');
@@ -178,22 +207,14 @@ app.post('/complete-buyback', authenticate, async (req, res) => {
       .from('buyback2')
       .update({ status: 'completed' })
       .eq('id', request_id);
-    console.log('Update buyback2 error:', updateError);
-    if (updateError) {
-      console.error('Update buyback2 failed:', updateError.message);
-      throw new Error(`Update buyback2 failed: ${updateError.message}`);
-    }
+    if (updateError) throw updateError;
 
     const { data: scoreData, error: scoreFetchError } = await supabase
       .from('vendor_score')
       .select('score')
       .eq('vendor_id', reqData.vendor_id)
       .maybeSingle();
-    console.log('Score data:', scoreData, 'Fetch error:', scoreFetchError);
-    if (scoreFetchError) {
-      console.error('Fetch vendor_score error:', scoreFetchError.message);
-      throw new Error(`Fetch vendor_score failed: ${scoreFetchError.message}`);
-    }
+    if (scoreFetchError) throw scoreFetchError;
 
     const currentScore = scoreData ? scoreData.score : 0;
     const { error: scoreError } = await supabase
@@ -202,11 +223,7 @@ app.post('/complete-buyback', authenticate, async (req, res) => {
         { vendor_id: reqData.vendor_id, score: currentScore + 1, last_updated: new Date().toISOString() },
         { onConflict: 'vendor_id' }
       );
-    console.log('Upsert vendor_score error:', scoreError);
-    if (scoreError) {
-      console.error('Upsert vendor_score failed:', scoreError.message);
-      throw new Error(`Upsert vendor_score failed: ${scoreError.message}`);
-    }
+    if (scoreError) throw scoreError;
 
     console.log('Buyback completed');
     res.send('Buyback completed');
@@ -269,6 +286,7 @@ app.post('/reject-buyback', authenticate, async (req, res) => {
 });
 
 app.get('/', (req, res) => {
+  console.log('Serving index.html from public');
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
 
