@@ -1,5 +1,5 @@
 console.log('script.js loaded');
-const supabase = window.supabase.createClient('https://jmqwuaybvruzxddsppdh.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImptcXd1YXlidnJ1enhkZHNwcGRoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDA0MTUxNzEsImV4cCI6MjA1NTk5MTE3MX0.ldNdOrsb4BWyFRwZUqIFEbmU0SgzJxiF_Z7eGZPKZJg');
+const supabase = window.supabase.createClient('https://oqquvpjikdbjlagdlbhp.supabase.co', 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im9xcXV2cGppa2RiamxhZ2RsYmhwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQ5NTE4MDgsImV4cCI6MjA2MDUyNzgwOH0.ec28Q9VqiW2FomXESxVkiYswtWe6kJS-Vpc7W_tMsuU'); // Ganti dengan anon key dari Supabase Dashboard
 let token;
 
 async function login() {
@@ -7,13 +7,16 @@ async function login() {
   try {
     const email = document.getElementById('email').value;
     const password = document.getElementById('password').value;
-    console.log('Attempting login with:', { email, password });
+    console.log('Attempting login with:', { email });
     if (!email || !password) throw new Error('Email and password are required');
     const { data, error } = await supabase.auth.signInWithPassword({
-      email: email,
-      password: password
+      email,
+      password
     });
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase login error:', error.message);
+      throw error;
+    }
     token = data.session.access_token;
     console.log('Login successful:', { token, user_id: data.user.id });
     localStorage.setItem('authToken', token);
@@ -32,13 +35,18 @@ async function register() {
   try {
     const email = document.getElementById('reg-email').value;
     const password = document.getElementById('reg-password').value;
-    console.log('Attempting register with:', { email, password });
+    console.log('Attempting register with:', { email });
     if (!email || !password) throw new Error('Email and password are required');
-    const { data, error } = await supabase.auth.signUp({
-      email: email,
-      password: password
+    const res = await fetch('/register', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password })
     });
-    if (error) throw error;
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
+    const data = await res.json();
     console.log('Registration successful:', data);
     alert('Registration successful! Please login.');
     document.getElementById('register-form').style.display = 'none';
@@ -86,7 +94,10 @@ async function requestBuyback() {
       headers: { 'Content-Type': 'application/json', Authorization: token },
       body: JSON.stringify({ nft_id: nftId })
     });
-    if (!res.ok) throw new Error(`Request failed: ${res.status}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
     console.log('Buyback requested');
     document.getElementById('request-message').textContent = 'Buyback requested—awaiting vendor confirmation';
     loadPendingRequests();
@@ -97,7 +108,7 @@ async function requestBuyback() {
 }
 
 async function loadPendingRequests() {
-  const pendingDiv = document.getElementById('pending-requests'); // Pindah ke sini
+  const pendingDiv = document.getElementById('pending-requests');
   try {
     const res = await fetch('/pending-requests', { headers: { Authorization: token } });
     if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
@@ -158,7 +169,10 @@ async function confirmBuyback(requestId) {
       headers: { 'Content-Type': 'application/json', Authorization: token },
       body: JSON.stringify({ request_id: requestId, proof_url: proofUrl })
     });
-    if (!res.ok) throw new Error(`Confirm failed: ${res.status}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
     console.log('Buyback confirmed');
     loadPendingRequests();
   } catch (error) {
@@ -174,7 +188,10 @@ async function completeBuyback(requestId) {
       headers: { 'Content-Type': 'application/json', Authorization: token },
       body: JSON.stringify({ request_id: requestId })
     });
-    if (!res.ok) throw new Error(`Complete failed: ${res.status}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
     console.log('Buyback completed');
     loadPendingRequests();
   } catch (error) {
@@ -190,7 +207,10 @@ async function cancelBuyback(requestId) {
       headers: { 'Content-Type': 'application/json', Authorization: token },
       body: JSON.stringify({ request_id: requestId })
     });
-    if (!res.ok) throw new Error(`Cancel failed: ${res.status}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
     console.log('Buyback canceled');
     loadPendingRequests();
   } catch (error) {
@@ -206,7 +226,10 @@ async function rejectBuyback(requestId) {
       headers: { 'Content-Type': 'application/json', Authorization: token },
       body: JSON.stringify({ request_id: requestId })
     });
-    if (!res.ok) throw new Error(`Reject failed: ${res.status}`);
+    if (!res.ok) {
+      const errorText = await res.text();
+      throw new Error(errorText);
+    }
     console.log('Buyback rejected');
     loadPendingRequests();
   } catch (error) {
@@ -237,12 +260,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('register-form').style.display = 'none';
     document.getElementById('login-form').style.display = 'block';
   });
-  // Logika untuk tombol Back (dipisahkan)
   const backButton = document.getElementById('back-to-mastermind');
   if (backButton) {
     backButton.addEventListener('click', () => {
       window.location.href = 'https://nft-main-bice.vercel.app';
     });
   }
-
 });
